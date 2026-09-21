@@ -72,6 +72,17 @@ agg demo.cast docs/demo.gif --font-size 14 --fps-cap 12
 `--auto-quit-after SECONDS` exits automatically once playback finishes, which
 is handy for scripted recordings (no need to press `q` yourself).
 
+## Development
+
+```bash
+pip install -e ".[dev]"
+python -m pytest
+```
+
+The tests build a deliberately nasty repo (unicode and quoted filenames, empty and merge
+commits, binary files, delete-then-re-add) and drive the real curses UI through a
+pseudo-terminal at odd sizes, with resizing, key-mashing, Ctrl-C and limited terminals.
+
 ## Roadmap ideas
 
 - `--since` / `--until` date filtering

@@ -9,8 +9,8 @@ from .colors import ColorMap, DIR_PAIR, DYING_PAIR, UI_PAIR
 from .gitlog import Commit
 from .model import FileTree
 
-MIN_DELAY = 0.02
 MAX_DELAY = 1.2
+MAX_FRAME_GAP = 0.25  # don't fast-forward after a stall (e.g. the terminal was suspended)
 TICK_INTERVAL = 0.08
 
 
@@ -41,13 +41,29 @@ class Playback:
         self.total_insertions = 0
         self.total_deletions = 0
         n = max(1, len(commits))
-        self.base_delay = min(MAX_DELAY, max(MIN_DELAY, target_duration / n))
+        self.raw_delay = min(MAX_DELAY, target_duration / n)
         self.scroll = 0
         self.finished = False
+        self.credit = 0.0
 
     @property
-    def delay(self) -> float:
-        return max(MIN_DELAY, self.base_delay / self.speed)
+    def step_seconds(self) -> float:
+        """Seconds of wall-clock time each commit should take at the current speed."""
+        return self.raw_delay / self.speed
+
+    def play(self, dt: float) -> None:
+        """Advance playback by `dt` seconds of wall-clock time.
+
+        Time-based rather than frame-based, so --duration holds however slow the terminal is
+        and however many commits the history has (several may be applied per frame).
+        """
+        if not self.playing or self.finished:
+            return
+        self.credit += dt / self.step_seconds
+        due = int(self.credit)
+        if due:
+            self.credit -= due
+            self.advance(due)
 
     def _apply(self, commit: Commit, animate: bool) -> None:
         for change in commit.changes:
@@ -60,13 +76,12 @@ class Playback:
             self.total_deletions += change.deletions
         self.author_counts[commit.author] += 1
 
-    def advance(self) -> None:
-        if self.idx >= len(self.commits):
-            self.playing = False
-            self.finished = True
-            return
-        self._apply(self.commits[self.idx], animate=True)
-        self.idx += 1
+    def advance(self, count: int = 1) -> None:
+        for _ in range(count):
+            if self.idx >= len(self.commits):
+                break
+            self._apply(self.commits[self.idx], animate=True)
+            self.idx += 1
         if self.idx >= len(self.commits):
             self.playing = False
             self.finished = True
@@ -170,7 +185,10 @@ def run(
     initial_speed: float = 1.0,
     auto_quit_after: float | None = None,
 ) -> None:
-    curses.curs_set(0)
+    try:
+        curses.curs_set(0)
+    except curses.error:
+        pass  # some terminals (vt100, dumb) can't hide the cursor
     stdscr.nodelay(True)
     stdscr.timeout(16)
 
@@ -178,7 +196,7 @@ def run(
     pb = Playback(commits, target_duration)
     pb.speed = max(0.1, min(32.0, initial_speed))
 
-    last_advance = time.monotonic()
+    last_frame = time.monotonic()
     last_tick = time.monotonic()
     finished_at: float | None = None
 
@@ -192,6 +210,7 @@ def run(
             return
         elif key == ord(" "):
             pb.playing = not pb.playing
+            pb.credit = 0.0
         elif key in (ord("+"), ord("=")):
             pb.adjust_speed(1.25)
         elif key in (ord("-"), ord("_")):
@@ -207,9 +226,8 @@ def run(
             pb.playing = True
 
         now = time.monotonic()
-        if pb.playing and now - last_advance >= pb.delay:
-            last_advance = now
-            pb.advance()
+        pb.play(min(now - last_frame, MAX_FRAME_GAP))
+        last_frame = now
 
         if now - last_tick >= TICK_INTERVAL:
             last_tick = now

@@ -54,6 +54,7 @@ class FileTree:
             self._files[path] = node
         node.size = max(0, node.size + delta)
         node.author = author
+        node.dying = 0
         node.pulse = PULSE_FRAMES if animate else 0
 
     def remove(self, path: str, animate: bool = True) -> None:

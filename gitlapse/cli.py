@@ -44,6 +44,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.duration <= 0:
+        parser.error("--duration must be greater than 0")
+    if args.speed <= 0:
+        parser.error("--speed must be greater than 0")
+    if args.auto_quit_after is not None and args.auto_quit_after < 0:
+        parser.error("--auto-quit-after can't be negative")
 
     repo_path = os.path.abspath(args.path)
     repo_name = os.path.basename(repo_path.rstrip(os.sep)) or repo_path
@@ -54,6 +60,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"gitlapse: {exc}", file=sys.stderr)
         return 1
 
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        print("gitlapse: needs an interactive terminal (stdin and stdout must be a TTY)", file=sys.stderr)
+        return 1
+
     def _main(stdscr):
         run(stdscr, commits, repo_name, args.duration, args.speed, args.auto_quit_after)
 
@@ -61,6 +71,10 @@ def main(argv: list[str] | None = None) -> int:
         curses.wrapper(_main)
     except KeyboardInterrupt:
         pass
+    except curses.error as exc:
+        term = os.environ.get("TERM", "(unset)")
+        print(f"gitlapse: this terminal (TERM={term}) can't run the full-screen view: {exc}", file=sys.stderr)
+        return 1
 
     return 0
 

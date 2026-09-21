@@ -20,6 +20,9 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
 [project.urls]
 Homepage = "https://github.com/TheDepressedGuy69/gitlapse"
 Repository = "https://github.com/TheDepressedGuy69/gitlapse"
@@ -29,3 +32,6 @@ gitlapse = "gitlapse.cli:main"
 
 [tool.setuptools]
 packages = ["gitlapse"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -5,6 +5,7 @@ so the whole tool works with nothing but git + a stock Python install.
 """
 from __future__ import annotations
 
+import os
 import subprocess
 from dataclasses import dataclass, field
 
@@ -32,12 +33,41 @@ class GitLogError(RuntimeError):
     pass
 
 
+_ESCAPES = {"a": 7, "b": 8, "t": 9, "n": 10, "v": 11, "f": 12, "r": 13, '"': 34, "\\": 92}
+
+
+def unquote_path(path: str) -> str:
+    """Undo git's C-style quoting, e.g. '"caf\\303\\251.txt"' -> 'café.txt'."""
+    if len(path) < 2 or path[0] != '"' or path[-1] != '"':
+        return path
+    body, out, i = path[1:-1], bytearray(), 0
+    while i < len(body):
+        ch = body[i]
+        if ch != "\\" or i + 1 >= len(body):
+            out += ch.encode("utf-8")
+            i += 1
+        elif body[i + 1] in _ESCAPES:
+            out.append(_ESCAPES[body[i + 1]])
+            i += 2
+        elif body[i + 1] in "01234567":
+            out.append(int(body[i + 1:i + 4], 8) & 0xFF)
+            i += 4
+        else:
+            out += body[i + 1].encode("utf-8")
+            i += 2
+    return out.decode("utf-8", "replace")
+
+
 def _run_git_log(repo_path: str, branch: str | None) -> str:
+    if not os.path.isdir(repo_path):
+        raise GitLogError(f"'{repo_path}' is not a directory")
     fmt = f"{HEADER_PREFIX}%H%x1f%an%x1f%ct%x1f%s"
     cmd = [
         "git",
         "-C",
         repo_path,
+        "-c",
+        "core.quotepath=off",
         "log",
         "--reverse",
         "--no-renames",
@@ -55,10 +85,14 @@ def _run_git_log(repo_path: str, branch: str | None) -> str:
         raise GitLogError("git executable not found on PATH") from exc
 
     if result.returncode != 0:
-        raise GitLogError(
-            f"git log failed (is '{repo_path}' a git repository?): "
-            f"{result.stderr.strip()}"
-        )
+        err = result.stderr.strip()
+        if "not a git repository" in err:
+            raise GitLogError(f"'{repo_path}' is not a git repository")
+        if "does not have any commits" in err:
+            raise GitLogError("this repository has no commits yet")
+        if branch and ("unknown revision" in err or "bad revision" in err):
+            raise GitLogError(f"no such branch or ref '{branch}'")
+        raise GitLogError(f"git log failed: {err.splitlines()[0] if err else 'unknown error'}")
     return result.stdout
 
 
@@ -71,7 +105,7 @@ def _parse_raw_line(line: str) -> tuple[str, str] | None:
     except ValueError:
         return None
     status = meta.split()[-1][0]  # first char handles e.g. "M100" scores
-    return status, path.strip()
+    return status, unquote_path(path.strip())
 
 
 def _parse_numstat_line(line: str) -> tuple[str, int, int] | None:
@@ -81,7 +115,7 @@ def _parse_numstat_line(line: str) -> tuple[str, int, int] | None:
     ins_s, del_s, path = parts
     ins = 0 if ins_s == "-" else int(ins_s)
     dele = 0 if del_s == "-" else int(del_s)
-    return path.strip(), ins, dele
+    return unquote_path(path.strip()), ins, dele
 
 
 def parse_commits(repo_path: str = ".", branch: str | None = None) -> list[Commit]:
