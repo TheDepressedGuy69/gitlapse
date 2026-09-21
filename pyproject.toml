@@ -21,8 +21,8 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/YOUR_USERNAME/gitlapse"
-Repository = "https://github.com/YOUR_USERNAME/gitlapse"
+Homepage = "https://github.com/TheDepressedGuy69/gitlapse"
+Repository = "https://github.com/TheDepressedGuy69/gitlapse"
 
 [project.scripts]
 gitlapse = "gitlapse.cli:main"
