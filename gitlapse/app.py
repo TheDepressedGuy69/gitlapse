@@ -43,6 +43,7 @@ class Playback:
         n = max(1, len(commits))
         self.base_delay = min(MAX_DELAY, max(MIN_DELAY, target_duration / n))
         self.scroll = 0
+        self.finished = False
 
     @property
     def delay(self) -> float:
@@ -62,9 +63,13 @@ class Playback:
     def advance(self) -> None:
         if self.idx >= len(self.commits):
             self.playing = False
+            self.finished = True
             return
         self._apply(self.commits[self.idx], animate=True)
         self.idx += 1
+        if self.idx >= len(self.commits):
+            self.playing = False
+            self.finished = True
 
     def seek(self, target: int) -> None:
         target = max(0, min(target, len(self.commits)))
@@ -75,6 +80,7 @@ class Playback:
         for i in range(target):
             self._apply(self.commits[i], animate=False)
         self.idx = target
+        self.finished = False
 
     def adjust_speed(self, factor: float) -> None:
         self.speed = max(0.1, min(32.0, self.speed * factor))
@@ -162,6 +168,7 @@ def run(
     repo_name: str,
     target_duration: float,
     initial_speed: float = 1.0,
+    auto_quit_after: float | None = None,
 ) -> None:
     curses.curs_set(0)
     stdscr.nodelay(True)
@@ -173,6 +180,7 @@ def run(
 
     last_advance = time.monotonic()
     last_tick = time.monotonic()
+    finished_at: float | None = None
 
     while True:
         try:
@@ -206,6 +214,15 @@ def run(
         if now - last_tick >= TICK_INTERVAL:
             last_tick = now
             pb.tree.tick()
+
+        if pb.finished:
+            if finished_at is None:
+                finished_at = now
+            if auto_quit_after is not None and now - finished_at >= auto_quit_after:
+                _draw(stdscr, cmap, pb, repo_name)
+                return
+        else:
+            finished_at = None
 
         _draw(stdscr, cmap, pb, repo_name)
         time.sleep(0.01)

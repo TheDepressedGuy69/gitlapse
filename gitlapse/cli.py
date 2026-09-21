@@ -30,6 +30,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--speed", type=float, default=1.0, help="initial playback speed multiplier (default: 1.0)"
     )
+    parser.add_argument(
+        "--auto-quit-after",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help="exit automatically N seconds after playback finishes (useful for scripted recordings)",
+    )
     parser.add_argument("--version", action="version", version=f"gitlapse {__version__}")
     return parser
 
@@ -48,7 +55,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     def _main(stdscr):
-        run(stdscr, commits, repo_name, args.duration, args.speed)
+        run(stdscr, commits, repo_name, args.duration, args.speed, args.auto_quit_after)
 
     try:
         curses.wrapper(_main)

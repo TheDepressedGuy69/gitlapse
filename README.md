@@ -6,28 +6,7 @@ appearing, growing, and disappearing over time, color-coded by author.
 Think [Gource](https://gource.io/), but **zero dependencies, one `pip install`, and it
 runs over SSH** — no GUI, no SDL, no X11. Just Python's standard library and `git`.
 
-<!-- TODO: replace with a real recording — see "Capturing a demo GIF" below -->
-<!-- ![demo](docs/demo.gif) -->
-
-```
- gitlapse — myproject                          [############--------] 82/103 commits
-
- top: Alice (41)  Bob (33)  Carol (9)
-
-   src/
-     api/
-       routes.py (312)
-       auth.py (88)
-     utils/
-       helpers.py (140)
-   docs/
-     README.md (52)
- ────────────────────────────────────────────────────────────────────────────
- a1b2c3d  Bob  ·  2026-03-14 09:21
- add rate limiting to the auth endpoint
- +8421  -1190 lines   ·   34 files   ·   82/103 commits
- [PLAYING]  space=pause  +/-=speed(1.0x)  ←/→=step  r=restart  q=quit
-```
+![demo](docs/demo.gif)
 
 ## Install
 
@@ -82,16 +61,16 @@ offline and works fine piped over SSH to a plain terminal.
 
 ## Capturing a demo GIF
 
-The best way to show this off is a terminal recording. A quick recipe with
-[asciinema](https://asciinema.org/) + [agg](https://github.com/asciinema/agg):
+The GIF above was captured with [asciinema](https://asciinema.org/) +
+[agg](https://github.com/asciinema/agg):
 
 ```bash
-asciinema rec demo.cast -c "gitlapse ~/code/some-active-project --duration 20"
+asciinema rec demo.cast -c "gitlapse ~/code/some-active-project --duration 18 --auto-quit-after 2"
 agg demo.cast docs/demo.gif
 ```
 
-Then drop `docs/demo.gif` into the repo and uncomment the image at the top of
-this README — a good GIF here is most of what gets a tool like this noticed.
+`--auto-quit-after SECONDS` exits automatically once playback finishes, which
+is handy for scripted recordings (no need to press `q` yourself).
 
 ## Roadmap ideas
 
