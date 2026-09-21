@@ -61,12 +61,12 @@ offline and works fine piped over SSH to a plain terminal.
 
 ## Capturing a demo GIF
 
-The GIF above was captured with [asciinema](https://asciinema.org/) +
+The GIF above (replaying the last ~480 commits of [pallets/flask](https://github.com/pallets/flask)) was captured with [asciinema](https://asciinema.org/) +
 [agg](https://github.com/asciinema/agg):
 
 ```bash
-asciinema rec demo.cast -c "gitlapse ~/code/some-active-project --duration 18 --auto-quit-after 2"
-agg demo.cast docs/demo.gif
+asciinema rec --headless --window-size 110x32 demo.cast -c "gitlapse ~/code/some-active-project --duration 20 --auto-quit-after 2"
+agg demo.cast docs/demo.gif --font-size 14 --fps-cap 12
 ```
 
 `--auto-quit-after SECONDS` exits automatically once playback finishes, which
